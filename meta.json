@@ -1,0 +1,13 @@
+{
+  "module_id": "mcvella:numato-board-usb-android",
+  "visibility": "public",
+  "url": "https://github.com/mcvella/viam-numato-board-usb-android",
+  "description": "Viam modular component for Numato USB gpio boards running on Android",
+  "models": [
+    {
+      "api": "rdk:component:generic",
+      "model": "mcvella:generic:numato-board-usb-android"
+    }
+  ],
+  "entrypoint": "mod.sh"
+}

@@ -1,0 +1,43 @@
+buildscript {
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.2'
+    }
+}
+
+plugins {
+    id 'com.viam.sdk.android.module' version '0.0.1'
+}
+
+module {
+    mainEntryClass = 'com.mcvella.numatoBoardUsbAndroid.Main'
+    executeInProcess = true
+}
+
+android {
+    namespace 'com.mcvella.numatoBoardUsbAndroid'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 29
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    implementation 'com.viam:viam-android-sdk:0.0.1-SNAPSHOT'
+    implementation 'com.github.mik3y:usb-serial-for-android:3.7.0'
+    implementation "androidx.core:core-ktx:+"
+}
