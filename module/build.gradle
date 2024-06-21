@@ -5,7 +5,7 @@ buildscript {
 }
 
 plugins {
-    id 'com.viam.sdk.android.module' version '0.0.1'
+    id 'com.viam.sdk.android.module' version '0.0.2'
 }
 
 module {
@@ -15,11 +15,11 @@ module {
 
 android {
     namespace 'com.mcvella.numatoBoardUsbAndroid'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         minSdk 29
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }
@@ -37,7 +37,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.viam:viam-android-sdk'
+    implementation 'com.viam:viam-android-sdk:0.0.2'
     implementation 'com.github.mik3y:usb-serial-for-android:3.7.0'
     implementation "androidx.core:core-ktx:+"
 }

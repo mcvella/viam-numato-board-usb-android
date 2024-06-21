@@ -3,7 +3,7 @@ Viam modular component for Numato USB GPIO boards on Android devices
 
 # viam-numato-board-usb-android
 
-This module implements the [Viam generic component API](https://docs.viam.com/components/generic/) in an mcvella:generic:numato-board-usb-android model.
+This module implements the [Viam board component API](https://docs.viam.com/components/board/) in an mcvella:board:numato-board-usb-android model.
 With this component, you can control Numato USB GPIO devices in your Viam Android projects.
 
 ## Requirements
@@ -14,7 +14,7 @@ Note that currently, the expectation is that this is the only USB serial device 
 
 ## Build and Run
 
-To use this module, follow these instructions to [add a module from the Viam Registry](https://docs.viam.com/registry/configure/#add-a-modular-resource-from-the-viam-registry) and select the `mcvella:generic:numato-board-usb-android` model from the [`mcvella:generic:numato-board-usb-android` module](https://app.viam.com/module/mcvella/mcvella:generic:numato-board-usb-android).
+To use this module, follow these instructions to [add a module from the Viam Registry](https://docs.viam.com/registry/configure/#add-a-modular-resource-from-the-viam-registry) and select the `mcvella:board:numato-board-usb-android` model from the [`mcvella:board:numato-board-usb-android` module](https://app.viam.com/module/mcvella/mcvella:board:numato-board-usb-android).
 
 ## Configure
 
@@ -23,7 +23,7 @@ To use this module, follow these instructions to [add a module from the Viam Reg
 
 Navigate to the **Config** tab of your robot’s page in [the Viam app](https://app.viam.com/).
 Click on the **Components** subtab and click **Create**.
-Select the `generic` type, then select the `mcvella:generic:numato-board-usb-android` model.
+Select the `board` type, then select the `mcvella:board:numato-board-usb-android` model.
 Enter a name for your component and click **Create**.
 
 On the new component panel, copy and paste the following attribute template into your pubsub’s **Attributes** box:
@@ -38,7 +38,7 @@ On the new component panel, copy and paste the following attribute template into
 
 ### Attributes
 
-The following attributes are available for `mcvella:generic:numato-board-usb-android`:
+The following attributes are available for `mcvella:board:numato-board-usb-android`:
 
 | Name | Type | Inclusion | Description |
 | ---- | ---- | --------- | ----------- |

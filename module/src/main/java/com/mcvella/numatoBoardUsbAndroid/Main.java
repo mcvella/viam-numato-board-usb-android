@@ -15,20 +15,27 @@ import androidx.core.app.ActivityCompat;
 import android.content.pm.PackageManager;
 
 
-import com.viam.sdk.core.component.generic.Generic;
+import com.viam.sdk.core.component.board.Board;
+import com.viam.component.board.v1.Board.PowerMode;
+import com.viam.sdk.core.exception.MethodNotImplementedException;
 import com.viam.sdk.core.resource.Model;
 import com.viam.sdk.core.resource.ModelFamily;
 import com.viam.sdk.core.resource.Registry;
 import com.viam.sdk.core.resource.Resource;
+import com.viam.sdk.core.resource.Subtype;
 import com.viam.sdk.core.resource.ResourceCreatorRegistration;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Queue;
 import java.util.List;
 import java.util.Set;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.logging.Logger;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -49,7 +56,7 @@ public class Main {
   public static void main(final String[] args) {
 
     Registry.registerResourceCreator(
-        Generic.SUBTYPE,
+        Board.SUBTYPE,
         NumatoBoard.MODEL,
         new ResourceCreatorRegistration(NumatoBoard::new, NumatoBoard::validateConfig)
     );
@@ -59,9 +66,9 @@ public class Main {
     module.start();
   }
 
-  public static class NumatoBoard extends Generic {
+  public static class NumatoBoard extends Board {
 
-    public static final Model MODEL = new Model(new ModelFamily("mcvella", "generic"), "numato-board-usb-android");
+    public static final Model MODEL = new Model(new ModelFamily("mcvella", "board"), "numato-board-usb-android");
     private static final Logger LOGGER = Logger.getLogger(NumatoBoard.class.getName());
     private UsbSerialPort board;
     private Integer defaultPwmFreq;
@@ -195,15 +202,16 @@ public class Main {
       return true;
     }
 
-    private sendBoardCommand(String serialCommand, String type) {
+    private String sendBoardCommand(String serialCommand, String type) {
       LOGGER.info("Numato serial command" + serialCommand);
+      final Struct.Builder builder = Struct.newBuilder();
 
       if (type == "write") {
         try {
           board.write(serialCommand.getBytes(), 500);
-          return builder.putFields("serial command written", Value.newBuilder().setStringValue(serialCommand).build()).build();
+          return "serial command written";
         } catch (IOException e) {
-          return builder.putFields("serial write error", Value.newBuilder().setStringValue(serialCommand).build()).build();
+          return "serial write error";
         }
       } else {
         byte[] resp = new byte[64];
@@ -211,14 +219,14 @@ public class Main {
           board.write(serialCommand.getBytes(), 1000);
           board.read(resp, 100);
         } catch (IOException e) {
-          return builder.putFields("serial read error", Value.newBuilder().setStringValue(serialCommand).build()).build();
+          return "serial read error";
         }
         String response = new String(resp, StandardCharsets.UTF_8);
         String rsplit[] = response.split("\\n\\r?");
         // if the board was not yet used, default to "off"
         String toReturn = rsplit.length > 1 ? rsplit[1] : "off";
 
-        return builder.putFields("status", Value.newBuilder().setStringValue(toReturn).build()).build();
+        return toReturn;
       }
     }
 
@@ -231,7 +239,7 @@ public class Main {
       } while (elapsed < nanos);
     }
 
-    private startPwmLoop(Integer pin){
+    private void startPwmLoop(Integer pin){
       if (!pwmState.containsKey(pin)) {
         Thread thread = new Thread(() -> {
           if (!pwmFreq.containsKey(pin)) {
@@ -240,23 +248,23 @@ public class Main {
           if (!pwmDuty.containsKey(pin)) {
             pwmDuty.put(pin, 0);
           }
-          Integer duty = pwmDuty.get(pin);
+          Double duty = (Double) pwmDuty.get(pin);
           
           while(duty > 0)
           {
-            freq = pwmFreq.get(pin);
-            freqNs = 1000000000 / freq;
+            Integer freq = (int) pwmFreq.get(pin);
+            Integer freqNs = Math.round(1000000000 / freq);
 
             // turn on pin for percent of freq interval
             sendBoardCommand("gpio set " + pin + "\r", "write");
-            busySleep(freqNs * duty);
+            busySleep(Math.round(freqNs * duty));
 
             // turn off pin for the rest of freq interval
             sendBoardCommand("gpio clear " + pin + "\r", "write");
-            busySleep(freqNs * (1 - duty));
+            busySleep(Math.round(freqNs * (1 - duty)));
 
             // re-read in case it changed
-            duty = pwmDuty.get(pin);
+            duty = (Double) pwmDuty.get(pin);
           }
           // done, so remove it
           pwmState.remove(pin);
@@ -269,55 +277,87 @@ public class Main {
 
     @Override
     public Struct doCommand(Map<String, Value> command) {
-      final Struct.Builder builder = Struct.newBuilder();
+      throw new MethodNotImplementedException("doCommand");
+    }
 
-      if (!ensureBoardOpen()) {
-        LOGGER.severe("Unable to open Numato");
-        return builder.putFields("Unable to open board", Value.newBuilder().setStringValue("error").build()).build();
+    @Override
+    public void setGpioState(String pin, Boolean high) {
+      String serialCommand;
+      if (high) {
+        serialCommand = "gpio set " + pin + "\r";
+      } else {
+        serialCommand = "gpio clear " + pin + "\r";
       }
+      sendBoardCommand(serialCommand, "write");
+    }
 
-      String serialCommand = "";
-      String type = "write";
-      if (command.containsKey("set_gpio")) {
-        String state = command.get("value");
-        if (state == "high") {
-          serialCommand = "gpio set " + command.get("pin").getNumberValue() + "\r";
-        } else {
-          serialCommand = "gpio clear " + command.get("pin").getNumberValue() + "\r";
-        }
-      } else if (command.containsKey("get_gpio")) {
-        serialCommand = "gpio read " + command.get("pin").getNumberValue() + "\r";
-        type = "read";
-      } else if (command.containsKey("get_analog")) {
-        serialCommand = "adc read " + command.get("pin").getNumberValue() + "\r";
-        type = "read";
-      } else if (command.containsKey("set_pwm_freq")) {
-        Integer pin = command.get("pin").getNumberValue();
-        pwmFreq.put(pin, command.get("value").getNumberValue());
-        return startPwmLoop(pin);
-      } else if (command.containsKey("get_pwm_freq")) {
-        Integer toReturn;
-        if (pwmFreq.containsKey(command.get("pin").getNumberValue())) {
-          toReturn = pwmFreq.get(command.get("pin").getNumberValue());
-        } else {
-          toReturn = defaultPwmFreq;
-        }
-        return builder.putFields("status", Value.newBuilder().setStringValue(toReturn).build()).build();
-      } else if (command.containsKey("set_pwm_duty")) {
-        Integer pin = command.get("pin").getNumberValue();
-        pwmDuty.put(pin, command.get("value").getNumberValue());
-        return startPwmLoop(pin);
-      } else if (command.containsKey("get_pwm_duty")) {
-        Integer toReturn;
-        if (pwmDuty.containsKey(command.get("pin").getNumberValue())) {
-          toReturn = pwmDuty.get(command.get("pin").getNumberValue());
-        } else {
-          toReturn = 0;
-        }
-        return builder.putFields("status", Value.newBuilder().setStringValue(toReturn).build()).build();
+    @Override
+    public Boolean getGpioState(String pin) {
+      String serialCommand = "gpio read " + pin + "\r";
+      String status = sendBoardCommand(serialCommand, "read");
+      return status == "on" ? true : false;
+    }
+
+    @Override
+    public void setPwm(String pin, Double dutyCyclePercent) {
+      pwmDuty.put(Integer.parseInt(pin), dutyCyclePercent);
+      startPwmLoop(Integer.parseInt(pin));
+    }
+    
+    @Override
+    public Double getPwm(String pin) {
+      Double currentDuty = 0.0;
+      if (pwmDuty.containsKey(Integer.parseInt(pin))) {
+        currentDuty = (Double) pwmDuty.get(Integer.parseInt(pin));
       }
+      return currentDuty;
+    }
 
-      return sendBoardCommand(serialCommand, type);
+    @Override
+    public void setPwmFrequency(String pin, Integer frequency) {
+      pwmFreq.put(Integer.parseInt(pin), frequency);
+      startPwmLoop(Integer.parseInt(pin));
+    }
+    
+    @Override
+    public Integer getPwmFrequency(String pin) {
+      Integer currentFreq = defaultPwmFreq;
+      if (pwmFreq.containsKey(Integer.parseInt(pin))) {
+        currentFreq = (Integer) pwmFreq.get(Integer.parseInt(pin));
+      }
+      return currentFreq;
+    }
+
+    @Override
+    public void writeAnalog(String pin, Integer value) {
+      throw new MethodNotImplementedException("writeAnalog");
+    }
+    
+    @Override
+    public Integer getAnalogReaderValue(String pin) {
+      String serialCommand = "adc read " + pin + "\r";
+      String status = sendBoardCommand(serialCommand, "read");
+      return Integer.parseInt(status);
+    }
+    
+    @Override
+    public Integer getDigitalInterruptValue(String digitalInterrupt) {
+      throw new MethodNotImplementedException("getDigitalInterruptValue");
+    }
+
+    @Override
+    public Iterator streamTicks(List interrupts) {
+      throw new MethodNotImplementedException("streamTicks");
+    }
+    
+    @Override
+    public void addCallbacks(List interrupts, Queue tickQueue) {
+      throw new MethodNotImplementedException("addCallbacks");
+    }
+
+    @Override
+    public void setPowerMode( PowerMode powerMode, Duration duration) {
+      throw new MethodNotImplementedException("setPowerMode");
     }
 
   }
