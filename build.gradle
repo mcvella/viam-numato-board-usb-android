@@ -3,5 +3,9 @@ buildscript {
         google()
         mavenLocal()
         mavenCentral()
+        maven {
+            name = "Snapshots"
+            url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+        }
     }
 }
