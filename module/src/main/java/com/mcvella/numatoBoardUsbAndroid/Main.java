@@ -14,7 +14,7 @@ import android.app.PendingIntent;
 import androidx.core.app.ActivityCompat;
 import android.content.pm.PackageManager;
 
-
+import com.viam.component.board.v1.Board.PowerMode;
 import com.viam.sdk.core.component.board.Board;
 import com.viam.component.board.v1.Board.PowerMode;
 import com.viam.sdk.core.exception.MethodNotImplementedException;
@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.logging.Logger;
@@ -56,7 +57,7 @@ public class Main {
   public static void main(final String[] args) {
 
     Registry.registerResourceCreator(
-        Board.SUBTYPE,
+        Board.getSUBTYPE(),
         NumatoBoard.MODEL,
         new ResourceCreatorRegistration(NumatoBoard::new, NumatoBoard::validateConfig)
     );
@@ -281,7 +282,7 @@ public class Main {
     }
 
     @Override
-    public void setGpioState(String pin, Boolean high) {
+    public void setGpioState(String pin, boolean high, Optional<Struct> extra) {
       String serialCommand;
       if (high) {
         serialCommand = "gpio set " + pin + "\r";
@@ -292,20 +293,20 @@ public class Main {
     }
 
     @Override
-    public Boolean getGpioState(String pin) {
+    public boolean getGpioState( String pin, Optional<Struct> extra) {
       String serialCommand = "gpio read " + pin + "\r";
       String status = sendBoardCommand(serialCommand, "read");
       return status == "on" ? true : false;
     }
 
     @Override
-    public void setPwm(String pin, Double dutyCyclePercent) {
-      pwmDuty.put(Integer.parseInt(pin), dutyCyclePercent);
+    public void setPwm(String pin, double dutyCyclePct, Optional<Struct> extra) {
+      pwmDuty.put(Integer.parseInt(pin), dutyCyclePct);
       startPwmLoop(Integer.parseInt(pin));
     }
     
     @Override
-    public Double getPwm(String pin) {
+    public double getPwm(String pin, Optional<Struct> extra) {
       Double currentDuty = 0.0;
       if (pwmDuty.containsKey(Integer.parseInt(pin))) {
         currentDuty = (Double) pwmDuty.get(Integer.parseInt(pin));
@@ -314,13 +315,13 @@ public class Main {
     }
 
     @Override
-    public void setPwmFrequency(String pin, Integer frequency) {
-      pwmFreq.put(Integer.parseInt(pin), frequency);
+    public void setPwmFrequency(String pin, int frequencyHz, Optional<Struct> extra) {
+      pwmFreq.put(Integer.parseInt(pin), frequencyHz);
       startPwmLoop(Integer.parseInt(pin));
     }
     
     @Override
-    public Integer getPwmFrequency(String pin) {
+    public int getPwmFrequency(String pin, Optional<Struct> extra) {
       Integer currentFreq = defaultPwmFreq;
       if (pwmFreq.containsKey(Integer.parseInt(pin))) {
         currentFreq = (Integer) pwmFreq.get(Integer.parseInt(pin));
@@ -329,34 +330,34 @@ public class Main {
     }
 
     @Override
-    public void writeAnalog(String pin, Integer value) {
+    public void writeAnalog(String pin, int value, Optional<Struct> extra) {
       throw new MethodNotImplementedException("writeAnalog");
     }
     
     @Override
-    public Integer getAnalogReaderValue(String pin) {
+    public int getAnalogReaderValue(String pin, Optional<Struct> extra) {
       String serialCommand = "adc read " + pin + "\r";
       String status = sendBoardCommand(serialCommand, "read");
       return Integer.parseInt(status);
     }
     
     @Override
-    public Integer getDigitalInterruptValue(String digitalInterrupt) {
+    public int getDigitalInterruptValue(String digitalInterrupt, Optional<Struct> extra) {
       throw new MethodNotImplementedException("getDigitalInterruptValue");
     }
 
     @Override
-    public Iterator streamTicks(List interrupts) {
+    public Iterator<com.viam.component.board.v1.Board.StreamTicksResponse> streamTicks(List<String> interrupts,  Optional<Struct> extra) {
       throw new MethodNotImplementedException("streamTicks");
     }
     
     @Override
-    public void addCallbacks(List interrupts, Queue tickQueue) {
+    public void addCallbacks(List<String> interrupts,  Queue<com.viam.component.board.v1.Board.StreamTicksResponse> tickQueue,  Optional<Struct> extra) {
       throw new MethodNotImplementedException("addCallbacks");
     }
 
     @Override
-    public void setPowerMode( PowerMode powerMode, Duration duration) {
+    public void setPowerMode(PowerMode powerMode, long duration, Optional<Struct> extra) {
       throw new MethodNotImplementedException("setPowerMode");
     }
 
