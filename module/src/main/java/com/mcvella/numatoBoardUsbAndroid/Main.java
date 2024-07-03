@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Queue;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -62,7 +63,8 @@ public class Main {
         public static final Model MODEL = new Model(new ModelFamily("mcvella", "board"), "numato-board-usb-android");
         private static final Logger LOGGER = Logger.getLogger(NumatoBoard.class.getName());
         private UsbSerialPort board;
-        private final Integer defaultPwmFreq;
+        // should probably allow this to be set via config
+        private final Integer defaultPwmFreq = 20000;
         private Map pwmFreq;
         private Map pwmDuty;
         private Map pwmState;
@@ -79,9 +81,9 @@ public class Main {
                     LOGGER.warning("Could not disconnect Numato board device; perhaps was not already connected");
                 }
             }
-
-            // should probably allow this to be set via config
-            defaultPwmFreq = 20000;
+            pwmFreq = new HashMap<>();
+            pwmDuty = new HashMap<>();
+            pwmState = new HashMap<>();
         }
 
         private boolean openBoard() {
@@ -180,6 +182,7 @@ public class Main {
                 }
             }
 
+            
             if (needToConnect) {
                 Boolean open = openBoard();
                 return open;
@@ -188,8 +191,12 @@ public class Main {
         }
 
         private String sendBoardCommand(String serialCommand, String type) {
-            LOGGER.info("Numato serial command" + serialCommand);
-            final Struct.Builder builder = Struct.newBuilder();
+            if (!ensureBoardOpen()) {
+              LOGGER.severe("Unable to open Numato");
+              return "error";
+            }
+
+            //LOGGER.info("Numato serial command " + serialCommand);
 
             if (type == "write") {
                 try {
@@ -199,7 +206,7 @@ public class Main {
                     return "serial write error";
                 }
             } else {
-                byte[] resp = new byte[64];
+                byte[] resp = new byte[32];
                 try {
                     board.write(serialCommand.getBytes(), 1000);
                     board.read(resp, 100);
@@ -207,6 +214,7 @@ public class Main {
                     return "serial read error";
                 }
                 String response = new String(resp, StandardCharsets.UTF_8);
+                LOGGER.info(response);
                 String[] rsplit = response.split("\\n\\r?");
                 // if the board was not yet used, default to "off"
                 String toReturn = rsplit.length > 1 ? rsplit[1] : "off";
